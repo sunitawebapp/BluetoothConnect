@@ -160,10 +160,6 @@ class BleDeviceConnectActivity : Activity() {
                             }
                             Log.d("advertisementData", "advertisement data: " + scanRecord.serviceUuids   +"  "+ scanRecord.deviceName)
 
-
-
-
-
                             Log.d("device", "onCreate: "+" Device: ${result.device.name}")
                         }
 
@@ -188,7 +184,8 @@ class BleDeviceConnectActivity : Activity() {
 
            //     for (i in tempdevices.indices){
                     filters.add(
-                        ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")),convertFromInteger(0x1800)).build()
+                     //   ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")),convertFromInteger(0x1800)).build()
+                                ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"))).build()
 
                     )
               //  }

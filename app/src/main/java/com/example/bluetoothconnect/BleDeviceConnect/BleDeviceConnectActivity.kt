@@ -22,6 +22,7 @@ import android.widget.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.bluetoothconnect.R
+import com.example.bluetoothconnect.SharePreferrence.SessionManager
 import java.util.*
 
 
@@ -58,6 +59,8 @@ class BleDeviceConnectActivity : Activity() {
         if (mBluetoothAdapter == null) {
             out.append("device not supported")
         }
+
+
         button1.setOnClickListener {
             if (!mBluetoothAdapter!!.isEnabled) {
                 val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -119,28 +122,87 @@ class BleDeviceConnectActivity : Activity() {
              override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
                  if (newState == BluetoothProfile.STATE_CONNECTED) {
                      // successfully connected to the GATT Server
-                     connectionState = STATE_CONNECTED
-                     Log.d("connected", "onConnectionStateChange: "+connectionState)
+                     if (SessionManager(this@BleDeviceConnectActivity).getconnectedDevices()!!.contains(gatt.device.address)){
+                         connectionState = STATE_CONNECTED
+                     }else{
+                         connectionState = STATE_CONNECTED
+                         Log.d("connected", "onConnectionStateChange: "+"successfully connected")
+                         var storedevice=SessionManager(this@BleDeviceConnectActivity).getconnectedDevices()!!
+                         SessionManager(this@BleDeviceConnectActivity).setconnectedDevices(storedevice+","+gatt.device.address)
+                     }
+                     voidSendDataToUIFromServiceUsingBR("STATE_CONNECTED")
+                     Toast.makeText(this@BleDeviceConnectActivity, "successfully connected ", Toast.LENGTH_SHORT).show()
                     // broadcastUpdate(ACTION_GATT_CONNECTED)
                  } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                      // disconnected from the GATT Server
                      connectionState = STATE_DISCONNECTED
+                     Log.d("connected", "onConnectionStateChange: "+"disconnected")
+                     Toast.makeText(this@BleDeviceConnectActivity, " disconnected ", Toast.LENGTH_SHORT).show()
                     // broadcastUpdate(ACTION_GATT_DISCONNECTED)
                  }
              }
          }
 
+
+
         printers.setOnItemClickListener { _, _, i, _ ->
             val device = devicesaddress[i]
-
             bluetoothGatt = mBluetoothAdapter.getRemoteDevice(device).connectGatt(this, true, bluetoothGattCallback)
-          if (connectionState==2){
-              Toast.makeText(this@BleDeviceConnectActivity, "successfully connected ${devicesaddress[i]}", Toast.LENGTH_SHORT).show()
-          }
         }
 
+        leScanCallback= object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                super.onScanResult(callbackType, result)
+                val scanRecord = result.scanRecord
+                val advertisementData = scanRecord!!.bytes
+
+                if (result.device.name != null) {
+                    if (!devices.contains(result.device.name)){
+                        devicesaddress.add(result.device.address)
+                        //  devices.add(result.device.name)
+
+                        if (scanRecord.serviceUuids!=null){
+                            tempdevices.add(scanRecord.serviceUuids.get(0).toString())
+                            devices.add(result.device.name)
+                        }
+                        Log.d("advertisementData", "advertisement data: " + scanRecord.serviceUuids   +"  "+ scanRecord.deviceName)
+
+                        Log.d("device", "onCreate: "+" Device: ${result.device.name}")
+                    }
+
+                }
+
+                printers.adapter=adapter
+            }
+        }
+        var   filters :MutableList<ScanFilter> =ArrayList()
+        if (!scanning) { // Stops scanning after a pre-defined scan period.
+            handler.postDelayed({
+                scanning = false
+
+                bluetoothLeScanner.stopScan(leScanCallback)
+            }, SCAN_PERIOD)
+            scanning = true
 
 
+            val settings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
+                .build()
+
+            //     for (i in tempdevices.indices){
+            filters.add(ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"))).build())
+            //  }
+
+
+          //   bluetoothLeScanner.startScan(leScanCallback)
+
+
+            bluetoothLeScanner.startScan(filters,settings,leScanCallback)
+        } else {
+            scanning = false
+            bluetoothLeScanner.stopScan(leScanCallback)
+        }
+        Log.d("filters", "onCreate: "+filters)
         button4.setOnClickListener {
 
             leScanCallback= object : ScanCallback() {
@@ -183,11 +245,7 @@ class BleDeviceConnectActivity : Activity() {
                     .build()
 
            //     for (i in tempdevices.indices){
-                    filters.add(
-                     //   ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")),convertFromInteger(0x1800)).build()
-                                ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"))).build()
-
-                    )
+                    filters.add(ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"))).build())
               //  }
 
 
@@ -197,7 +255,6 @@ class BleDeviceConnectActivity : Activity() {
                 scanning = false
                 bluetoothLeScanner.stopScan(leScanCallback)
             }
-
             Log.d("filters", "onCreate: "+filters)
         }
 
@@ -229,19 +286,7 @@ class BleDeviceConnectActivity : Activity() {
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
         }
     }
-   /* override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        when (requestCode) {
-            FINE_LOCATION_PERMISSION_REQUEST -> {
-                if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    scanLeDevice(true)
-                } else {
-//notify the user to allow location detection otherwise the scaning won't work
-                }
-                return
-            }
-        }
 
-    }*/
    inner class BluetoothDevicesAdapter(context: Context) : ArrayAdapter<BluetoothDevice>(context, android.R.layout.simple_list_item_1) {
        override fun getCount(): Int {
            return devices.size
@@ -261,11 +306,7 @@ class BleDeviceConnectActivity : Activity() {
                }
        }
 
-    fun convertFromInteger(i: Int): ParcelUuid? {
-        val MSB = 0x0000000000001000L
-        val LSB = -0x7fffff7fa064cb05L
-        val value = (i and -0x1).toLong()
+fun voidSendDataToUIFromServiceUsingBR(dataToBePassedToUI: String){
 
-        return ParcelUuid(  UUID(MSB or (value shl 32), LSB))
-    }
+}
 }

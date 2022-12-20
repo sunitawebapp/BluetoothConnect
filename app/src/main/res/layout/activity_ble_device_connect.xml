@@ -41,7 +41,8 @@
         android:layout_alignLeft="@+id/button3"
         android:layout_below="@+id/button3"
         android:layout_marginTop="28dp"
-        android:text="Scan Device" />
+        android:text="Scan Device"
+        android:visibility="gone"/>
 
     <Button
         android:id="@+id/button5"

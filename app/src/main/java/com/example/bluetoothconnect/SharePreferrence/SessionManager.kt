@@ -3,6 +3,10 @@ package com.example.bluetoothconnect.SharePreferrence
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.SharedPreferences
+import android.preference.PreferenceManager
+
+
+
 
 
 class SessionManager(activity: Context){
@@ -20,4 +24,6 @@ class SessionManager(activity: Context){
     fun getconnectedDevices() : String?{
         return sharedPreferences.getString("connectedDevices","")
     }
+
+
 }

@@ -24,13 +24,7 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
     lateinit var btnBleDevice : Button
     val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-    var devices: ArrayList<String> = ArrayList()
-    var devicesaddress: ArrayList<String> = ArrayList()
-    val bluetoothLeScanner = mBluetoothAdapter.bluetoothLeScanner
-    var scanning = false
-    val handler = Handler()
-    // Stops scanning after 10 seconds.
-    val SCAN_PERIOD: Long = 10000
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -41,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         var intent = Intent(this@MainActivity , BleDeviceConnectActivity::class.java)
             startActivity(intent)
         }
-
+/*
         val bluetoothGattCallback: BluetoothGattCallback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
@@ -59,7 +53,7 @@ class MainActivity : AppCompatActivity() {
                        .connectGatt(this, true, bluetoothGattCallback)
                }
             }
-        }
+        }*/
 
     }
 }

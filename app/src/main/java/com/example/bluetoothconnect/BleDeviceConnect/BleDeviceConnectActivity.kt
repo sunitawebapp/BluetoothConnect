@@ -17,19 +17,27 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.View
+import android.view.View.OnClickListener
 import android.view.ViewGroup
 import android.widget.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.bluetoothconnect.R
+import com.example.bluetoothconnect.databinding.ActivityBleDeviceConnectBinding
 import java.util.*
 
 
 //https://stackoverflow.com/questions/21916775/auto-connecting-to-a-ble-device
 
-class BleDeviceConnectActivity : Activity() {
+class BleDeviceConnectActivity : Activity() ,OnClickListener{
+    lateinit var binding : ActivityBleDeviceConnectBinding
+    var wcharacteristic: BluetoothGattCharacteristic? = null
+    var bletoothGatt: BluetoothGatt? = null
+    var bluetoothResponse: String=""
+    var bluetoothResponse2: String=""
+
    lateinit var leScanCallback: ScanCallback
-   lateinit var lefilterScanCallback :ScanCallback
+
    val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
    var devices: ArrayList<String> = ArrayList()
     var devicesaddress: ArrayList<String> = ArrayList()
@@ -42,296 +50,64 @@ class BleDeviceConnectActivity : Activity() {
     // Stops scanning after 10 seconds.
     val SCAN_PERIOD: Long = 10000
     var deviceuuid=""
+    lateinit var bluetoothGattCallback: BluetoothGattCallback
 
     private var bluetoothGatt: BluetoothGatt? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_ble_device_connect)
+        binding = ActivityBleDeviceConnectBinding.inflate(layoutInflater)
+        val view = binding.root
+        binding.apply {
+            TestingCMDSend.setOnClickListener(this@BleDeviceConnectActivity)
+            BatterySend.setOnClickListener(this@BleDeviceConnectActivity)
+            HomeSend.setOnClickListener(this@BleDeviceConnectActivity)
+            CurrentPositionSend.setOnClickListener(this@BleDeviceConnectActivity)
+            BackTiltSend.setOnClickListener(this@BleDeviceConnectActivity)
+            LumberSend.setOnClickListener(this@BleDeviceConnectActivity)
+            SeatTiltSend.setOnClickListener(this@BleDeviceConnectActivity)
+            BackHeightSend.setOnClickListener(this@BleDeviceConnectActivity)
+            ChairHeightSend.setOnClickListener(this@BleDeviceConnectActivity)
+            button4.setOnClickListener(this@BleDeviceConnectActivity)
+            button1.setOnClickListener(this@BleDeviceConnectActivity)
+            button2.setOnClickListener(this@BleDeviceConnectActivity)
+            button3.setOnClickListener(this@BleDeviceConnectActivity)
+        }
+        setContentView(view)
         val out = findViewById<View>(R.id.out) as TextView
-        val button1 = findViewById<View>(R.id.button1) as Button
-        val button2 = findViewById<View>(R.id.button2) as Button
-        val button3 = findViewById<View>(R.id.button3) as Button
-        val button4 =findViewById<View>(R.id.button4) as Button
-        val button5 =findViewById<View>(R.id.button5) as Button
-          printers=findViewById<View>(R.id.printers) as ListView
 
-        adapter=BluetoothDevicesAdapter(this)
+        printers = findViewById(R.id.printers)
+
+        adapter = BluetoothDevicesAdapter(this)
 
         if (mBluetoothAdapter == null) {
             out.append("device not supported")
         }
 
-        leScanCallback= object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                super.onScanResult(callbackType, result)
-                val scanRecord = result.scanRecord
-                val advertisementData = scanRecord!!.bytes
+        getbleDevices()
+        printers.setOnItemClickListener { _, _, i, _ ->
 
-                if (result.device.name != null) {
-                    if (!devices.contains(result.device.name)){
-                        devicesaddress.add(result.device.address)
-                        //  devices.add(result.device.name)
-
-                        if (scanRecord.serviceUuids!=null){
-                            tempdevices.add(scanRecord.serviceUuids.get(0).toString())
-                            devices.add(result.device.name)
-                        }
-                        Log.d("advertisementData", "advertisement data: " + scanRecord.serviceUuids   +"  "+ scanRecord.deviceName)
-
-                        Log.d("device", "onCreate: "+" Device: ${result.device.name}")
-                    }
-
-                }
-
-                printers.adapter=adapter
-            }
-        }
-        var   filters :MutableList<ScanFilter> =ArrayList()
-        if (!scanning) { // Stops scanning after a pre-defined scan period.
-            handler.postDelayed({
-                scanning = false
-
-                bluetoothLeScanner.stopScan(leScanCallback)
-            }, SCAN_PERIOD)
-            scanning = true
-
-
-            val settings = ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
-                .build()
-
-            //     for (i in tempdevices.indices){
-            filters.add(ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"))).build())
-            //  }
-
-            bluetoothLeScanner.startScan(filters,settings,leScanCallback)
-        } else {
-            scanning = false
-            bluetoothLeScanner.stopScan(leScanCallback)
-        }
-        Log.d("filters", "onCreate: "+filters)
-        button1.setOnClickListener {
-            if (!mBluetoothAdapter!!.isEnabled) {
-                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                startActivityForResult(
-                    enableBtIntent,
-                    REQUEST_ENABLE_BT
-                )
-            }
-        }
-        button2.setOnClickListener {
-            if (!mBluetoothAdapter!!.isDiscovering) {
-                //                   out.append("MAKING YOUR DEVICE DISCOVERABLE");
-                val context = applicationContext
-                val text: CharSequence = "MAKING YOUR DEVICE DISCOVERABLE"
-                val duration = Toast.LENGTH_SHORT
-                val toast = Toast.makeText(context, text, duration)
-                toast.show()
-
+                val device = devicesaddress[i]
                 if (ActivityCompat.checkSelfPermission(
                         this,
                         Manifest.permission.BLUETOOTH_CONNECT
                     ) != PackageManager.PERMISSION_GRANTED
                 ) {
-                    val devices: Set<BluetoothDevice> = mBluetoothAdapter.bondedDevices
-                    for (device in devices) {
-                        if (device.uuids[0] !=null){
-                            deviceuuid=device.uuids[0].toString()
-                        }
-                        Log.d("deviceuuids", "onCreate: "+" Device: ${device.uuids[0]}       ${device.name}")
-
-                    }
-
 
 
                 }
+                bletoothGatt = mBluetoothAdapter.getRemoteDevice(device)
+                    .connectGatt(this, false, bluetoothGattCallback)
 
-                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
-                startActivityForResult(
-                    enableBtIntent,
-                    REQUEST_DISCOVERABLE_BT
-                )
             }
         }
-        button3.setOnClickListener {
-            mBluetoothAdapter!!.disable()
-            //            out.append("TURN_OFF BLUETOOTH");
-            val context = applicationContext
-            val text: CharSequence = "TURNING_OFF BLUETOOTH"
-            val duration = Toast.LENGTH_LONG
-            val toast = Toast.makeText(context, text, Toast.LENGTH_SHORT)
-            toast.show()
-        }
-    //    val leDeviceListAdapter = LeDeviceListAdapter()
-        // Device scan callback.
 
 
-         var connectionState = STATE_DISCONNECTED
-         val bluetoothGattCallback: BluetoothGattCallback = object : BluetoothGattCallback() {
-             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-
-                 gatt.discoverServices()
-                 Log.d("connectionState", "onConnectionStateChange: "+ gatt.services)
-
-                 Log.d("BluetoothProfile.STATE_CONNECTED", "onConnectionStateChange: "+BluetoothProfile.STATE_CONNECTED)
-
-                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                     // successfully connected to the GATT Server
-                   /*  if (SessionManager(this@BleDeviceConnectActivity).getconnectedDevices()!!.contains(gatt.device.address)){
-                         connectionState = STATE_CONNECTED
-                     }else{
-                         connectionState = STATE_CONNECTED
-                         Log.d("connected", "onConnectionStateChange: "+"successfully connected")
-                         var storedevice=SessionManager(this@BleDeviceConnectActivity).getconnectedDevices()!!
-                         SessionManager(this@BleDeviceConnectActivity).setconnectedDevices(storedevice+","+gatt.device.address)
-                     }*/
-
-//                     Toast.makeText(this@BleDeviceConnectActivity, "successfully connected ", Toast.LENGTH_SHORT).show()
-                     if (ActivityCompat.checkSelfPermission(
-                             this@BleDeviceConnectActivity,
-                             Manifest.permission.BLUETOOTH_CONNECT
-                         ) != PackageManager.PERMISSION_GRANTED
-                     ) {
-
-                         return
-                     }
-                     connectionState = STATE_CONNECTED
-                     Log.d("connectionState", "onConnectionStateChange: "+connectionState)
-                     gatt.discoverServices()
-                    // broadcastUpdate(ACTION_GATT_CONNECTED)
-                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                     // disconnected from the GATT Server
-                     connectionState = STATE_DISCONNECTED
-                     Log.d("connected", "onConnectionStateChange: "+"disconnected")
-                     Toast.makeText(this@BleDeviceConnectActivity, " disconnected ", Toast.LENGTH_SHORT).show()
-                    // broadcastUpdate(ACTION_GATT_DISCONNECTED)
-                 }
-             }
-
-             override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-                 Log.d("statusdiscoverd", "onServicesDiscovered: "+status)
-                 Log.d("statusdiscoverd", "onServicesDiscovered: "+gatt!!.services)
-
-//                 Log.d("onServicesDiscovered", "onServicesDiscovered: ---------------------")
-//                 Log.i("", "onServicesDiscovered: service=" + gattservice.uuid.toString())
-//                 Log.d("onServicesDiscovered", "Characteristic discovered: ---------------------")
-//                 Log.i("", "onServicesDiscovered: characteritic=" + gattCharacterisic.uuid.toString())
-                 for (gattService in gatt!!.services) {
-                     Log.d("onServicesDiscovered", "onServicesDiscovered: ---------------------")
-                     Log.i("", "onServicesDiscovered: service=" + gattService.uuid)
-                     for (characteristic in gattService.characteristics) {
-                         Log.i("", "onServicesDiscovered: characteristic=" + characteristic.uuid)
-                         if (characteristic.uuid.toString() == "0000ffe1-0000-1000-8000-00805f9b34fb") {
-                             if (ActivityCompat.checkSelfPermission(
-                                     this@BleDeviceConnectActivity,
-                                     Manifest.permission.BLUETOOTH_CONNECT
-                                 ) != PackageManager.PERMISSION_GRANTED
-                             ) {
-                                gatt.setCharacteristicNotification(characteristic,true)
-                                 //   Log.w("", "onServicesDiscovered: found LED")
-                                 //  val originalString = "560D0F0600F0AA"
-                                 var originalString = "AT"
-                                 // val b: ByteArray = hexStringToByteArray(originalString)!!
-                                 var b: ByteArray =originalString.toByteArray()
-                                 characteristic.setValue(b)// call this BEFORE(!) you 'write' any stuff to the server
-
-                                 bluetoothGatt?.writeCharacteristic(characteristic)
-
-
-                                 Log.w("onServicesDiscovered", "onServicesDiscovered: "+ characteristic.getValue())
-                                 return
-                             }
-
-
-                         }
-                     }
-                 }
-
-                 super.onServicesDiscovered(gatt, status)
-             }
-
-
-             override fun onCharacteristicChanged(
-                 gatt: BluetoothGatt?,
-                 characteristic: BluetoothGattCharacteristic?
-             ) {
-                 Log.w("onCharacteristicChanged","in change"+characteristic!!.value.decodeToString())
-                 super.onCharacteristicChanged(gatt, characteristic)
-             }
-
-
-         }
-
-
-
-        printers.setOnItemClickListener { _, _, i, _ ->
-            val device = devicesaddress[i]
-            bluetoothGatt = mBluetoothAdapter.getRemoteDevice(device).connectGatt(this, false, bluetoothGattCallback)
+        override fun onCreateOptionsMenu(menu: Menu): Boolean {
+            // Inflate the menu; this adds items to the action bar if it is present.
+            //   menuInflater.inflate(R.menu.activity_ble_device_connect, menu)
+            return true
         }
 
-
-        button4.setOnClickListener {
-
-            leScanCallback= object : ScanCallback() {
-                override fun onScanResult(callbackType: Int, result: ScanResult) {
-                    super.onScanResult(callbackType, result)
-                    val scanRecord = result.scanRecord
-                    val advertisementData = scanRecord!!.bytes
-
-                    if (result.device.name != null) {
-                        if (!devices.contains(result.device.name)){
-                            devicesaddress.add(result.device.address)
-                            //  devices.add(result.device.name)
-
-                            if (scanRecord.serviceUuids!=null){
-                                tempdevices.add(scanRecord.serviceUuids.get(0).toString())
-                                devices.add(result.device.name)
-                            }
-                            Log.d("advertisementData", "advertisement data: " + scanRecord.serviceUuids   +"  "+ scanRecord.deviceName)
-
-                            Log.d("device", "onCreate: "+" Device: ${result.device.name}")
-                        }
-
-                    }
-
-                    printers.adapter=adapter
-                }
-            }
-            var   filters :MutableList<ScanFilter> =ArrayList()
-            if (!scanning) { // Stops scanning after a pre-defined scan period.
-                handler.postDelayed({
-                    scanning = false
-
-                  bluetoothLeScanner.stopScan(leScanCallback)
-                }, SCAN_PERIOD)
-                scanning = true
-
-
-                val settings = ScanSettings.Builder()
-                    .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
-                    .build()
-
-           //     for (i in tempdevices.indices){
-                    filters.add(ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"))).build())
-              //  }
-
-
-               // bluetoothLeScanner.startScan(leScanCallback)
-               bluetoothLeScanner.startScan(filters,settings,leScanCallback)
-            } else {
-                scanning = false
-                bluetoothLeScanner.stopScan(leScanCallback)
-            }
-            Log.d("filters", "onCreate: "+filters)
-        }
-
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-     //   menuInflater.inflate(R.menu.activity_ble_device_connect, menu)
-        return true
-    }
 
     companion object {
         private const val REQUEST_ENABLE_BT = 0
@@ -372,10 +148,6 @@ class BleDeviceConnectActivity : Activity() {
                    }
                }
        }
-
-            fun voidSendDataToUIFromServiceUsingBR(dataToBePassedToUI: String){
-
-            }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -444,15 +216,426 @@ class BleDeviceConnectActivity : Activity() {
         }
         return
     }
-    fun hexStringToByteArray(s: String): ByteArray? {
-        val len = s.length
-        val data = ByteArray(len / 2)
-        var i = 0
-        while (i < len) {
-            data[i / 2] = ((s[i].digitToIntOrNull(16) ?: -1 shl 4)
-            + s[i + 1].digitToIntOrNull(16)!!).toByte()
-            i += 2
+
+    fun getbleDevices() {
+        leScanCallback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                super.onScanResult(callbackType, result)
+                val scanRecord = result.scanRecord
+                val advertisementData = scanRecord!!.bytes
+
+                if (result.device.name != null) {
+                    if (!devices.contains(result.device.name)) {
+                        devicesaddress.add(result.device.address)
+                        //  devices.add(result.device.name)
+
+                        if (scanRecord.serviceUuids != null) {
+                            tempdevices.add(scanRecord.serviceUuids.get(0).toString())
+                            devices.add(result.device.name)
+                        }
+                        Log.d(
+                            "advertisementData",
+                            "advertisement data: " + scanRecord.serviceUuids + "  " + scanRecord.deviceName
+                        )
+
+                        Log.d("device", "onCreate: " + " Device: ${result.device.name}")
+                    }
+
+                }
+
+                printers.adapter = adapter
+            }
         }
-        return data
+        var filters: MutableList<ScanFilter> = ArrayList()
+        if (!scanning) { // Stops scanning after a pre-defined scan period.
+            handler.postDelayed({
+                scanning = false
+
+                bluetoothLeScanner.stopScan(leScanCallback)
+            }, SCAN_PERIOD)
+            scanning = true
+
+
+            val settings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
+                .build()
+
+            //     for (i in tempdevices.indices){
+            filters.add(
+                ScanFilter.Builder()
+                    .setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")))
+                    .build()
+            )
+            //  }
+
+            bluetoothLeScanner.startScan(filters, settings, leScanCallback)
+        } else {
+            scanning = false
+            bluetoothLeScanner.stopScan(leScanCallback)
+        }
+        Log.d("filters", "onCreate: " + filters)
+
+        //    val leDeviceListAdapter = LeDeviceListAdapter()
+        // Device scan callback.
+
+
+        var connectionState = STATE_DISCONNECTED
+        bluetoothGattCallback= object : BluetoothGattCallback() {
+            override fun onConnectionStateChange(
+                gatt: BluetoothGatt,
+                status: Int,
+                newState: Int
+            ) {
+
+                gatt.discoverServices()
+                Log.d("connectionState", "onConnectionStateChange: " + gatt.services)
+
+                Log.d(
+                    "BluetoothProfile.STATE_CONNECTED",
+                    "onConnectionStateChange: " + BluetoothProfile.STATE_CONNECTED
+                )
+
+                if (newState == BluetoothProfile.STATE_CONNECTED) {
+//                     Toast.makeText(this@BleDeviceConnectActivity, "successfully connected ", Toast.LENGTH_SHORT).show()
+                    if (ActivityCompat.checkSelfPermission(
+                            this@BleDeviceConnectActivity,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+
+                        return
+                    }
+                    connectionState = STATE_CONNECTED
+                    Log.d("connectionState", "onConnectionStateChange: " + connectionState)
+                    gatt.discoverServices()
+                    // broadcastUpdate(ACTION_GATT_CONNECTED)
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    // disconnected from the GATT Server
+                    connectionState = STATE_DISCONNECTED
+                    Log.d("connected", "onConnectionStateChange: " + "disconnected")
+                    Toast.makeText(
+                        this@BleDeviceConnectActivity,
+                        " disconnected ",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    // broadcastUpdate(ACTION_GATT_DISCONNECTED)
+                }
+            }
+
+            override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+                Log.d("statusdiscoverd", "onServicesDiscovered: " + gatt!!.services)
+
+                for (gattService in gatt!!.services) {
+                    Log.d("onServicesDiscovered", "onServicesDiscovered: ---------------------")
+                    Log.i("", "onServicesDiscovered: service=" + gattService.uuid)
+                    for (characteristic in gattService.characteristics) {
+                        Log.i("", "onServicesDiscovered: characteristic=" + characteristic.uuid)
+                        if (characteristic.uuid.toString() == "0000ffe1-0000-1000-8000-00805f9b34fb") {
+                            if (ActivityCompat.checkSelfPermission(
+                                    this@BleDeviceConnectActivity,
+                                    Manifest.permission.BLUETOOTH_CONNECT
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                gatt.setCharacteristicNotification(characteristic, true)
+                                //   Log.w("", "onServicesDiscovered: found LED")
+                                //  val originalString = "560D0F0600F0AA"
+                                //   var originalString = "AT"
+                                // val b: ByteArray = hexStringToByteArray(originalString)!!
+                                //     var b: ByteArray = originalString.toByteArray()
+                                //  characteristic.setValue(b)// call this BEFORE(!) you 'write' any stuff to the server
+                                wcharacteristic = characteristic
+                                //   bluetoothGatt?.writeCharacteristic(characteristic)
+
+
+                                Log.w(
+                                    "onServicesDiscovered",
+                                    "onServicesDiscovered: " + characteristic.getValue()
+                                )
+                                return
+                            }
+                        }
+                    }
+                }
+
+                super.onServicesDiscovered(gatt, status)
+            }
+            override fun onCharacteristicChanged(
+                gatt: BluetoothGatt?,
+                characteristic: BluetoothGattCharacteristic?
+            ) {
+
+                bluetoothResponse2 = characteristic!!.value.decodeToString()
+                bluetoothResponse =
+                    characteristic!!.value.decodeToString()?.split("\\r?\\n".toRegex()).toString()
+                val array = characteristic!!.value.decodeToString()?.split("\\r?\\n".toRegex())
+                var string = ""
+
+                val size = array?.size
+
+                // bluetoothResponse?.split("\\r?\\n".toRegex())
+
+                Log.w(
+                    "onCharacteristicChanged",
+                    "in change" + bluetoothResponse
+
+
+                )
+                super.onCharacteristicChanged(gatt, characteristic)
+            }
+        }
+
+    }
+
+    override fun onClick(v: View?) {
+        when(v){
+
+            binding.TestingCMDSend->{
+                wcharacteristic?.setValue( binding.etTestingCMD.text.toString())// call this BEFORE(!) you 'write' any stuff to the server
+                // wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    // bletoothGatt = wcharacteristic!!.value.decodeToString()
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse2.setText(bluetoothResponse2)
+
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.BatterySend->{
+                wcharacteristic?.setValue("b")// call this BEFORE(!) you 'write' any stuff to the server
+                //   wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    //bluetoothResponse = wcharacteristic!!.value.decodeToString()
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse2.setText(bluetoothResponse2)
+
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.HomeSend->{
+                wcharacteristic?.setValue("h9")// call this BEFORE(!) you 'write' any stuff to the server
+                //  wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    //bluetoothResponse = wcharacteristic!!.value.decodeToString()
+                    //  bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse2.setText(bluetoothResponse2)
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.CurrentPositionSend->{
+                wcharacteristic?.setValue("p9")// call this BEFORE(!) you 'write' any stuff to the server
+                //  wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    //    bluetoothResponse = wcharacteristic!!.value.decodeToString()
+
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse2.setText(bluetoothResponse2)
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.BackTiltSend->{
+                wcharacteristic?.setValue("m1"+ binding.etBackTilt.text.toString())// call this BEFORE(!) you 'write' any stuff to the server
+                //  wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    // bluetoothResponse = wcharacteristic!!.value.decodeToString()
+                    binding. bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse2.setText(bluetoothResponse2)
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.LumberSend->{
+                wcharacteristic?.setValue("m3"+ binding.etLumber.text.toString())// call this BEFORE(!) you 'write' any stuff to the server
+                // wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    //   bletoothGatt = wcharacteristic!!.value.decodeToString()
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse2.setText(bluetoothResponse2)
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.SeatTiltSend->{
+                wcharacteristic?.setValue("m0"+ binding.etSeatTilt.text.toString())// call this BEFORE(!) you 'write' any stuff to the server
+                //wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    // bletoothGatt = wcharacteristic!!.value.decodeToString()
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding.bleResponse2.setText(bluetoothResponse2)
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.BackHeightSend->{
+                wcharacteristic?.setValue("m2"+ binding.etBackHeight.text.toString())// call this BEFORE(!) you 'write' any stuff to the server
+                //  wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    // bletoothGatt = wcharacteristic!!.value.decodeToString()
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding. bleResponse2.setText(bluetoothResponse2)
+
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.ChairHeightSend->{
+                wcharacteristic?.setValue("m4"+ binding.etChairHeight.text.toString())// call this BEFORE(!) you 'write' any stuff to the server
+                // wcharacteristic?.setValue("AT")// call this BEFORE(!) you 'write' any stuff to the server
+                bletoothGatt?.writeCharacteristic(wcharacteristic)
+                wcharacteristic?.let {
+                    // bletoothGatt = wcharacteristic!!.value.decodeToString()
+                    binding.bleResponse.setText(bluetoothResponse)
+                    binding. bleResponse2.setText(bluetoothResponse2)
+
+                    Log.d(
+                        "valuereponse",
+                        "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
+                    )
+                }
+            }
+            binding.button4->  {
+                leScanCallback = object : ScanCallback() {
+                    override fun onScanResult(callbackType: Int, result: ScanResult) {
+                        super.onScanResult(callbackType, result)
+                        val scanRecord = result.scanRecord
+                        val advertisementData = scanRecord!!.bytes
+
+                        if (result.device.name != null) {
+                            if (!devices.contains(result.device.name)) {
+                                devicesaddress.add(result.device.address)
+                                //  devices.add(result.device.name)
+
+                                if (scanRecord.serviceUuids != null) {
+                                    tempdevices.add(scanRecord.serviceUuids.get(0).toString())
+                                    devices.add(result.device.name)
+                                }
+                                Log.d(
+                                    "advertisementData",
+                                    "advertisement data: " + scanRecord.serviceUuids + "  " + scanRecord.deviceName
+                                )
+
+                                Log.d("device", "onCreate: " + " Device: ${result.device.name}")
+                            }
+
+                        }
+
+                        printers.adapter = adapter
+                    }
+                }
+                var filters: MutableList<ScanFilter> = ArrayList()
+                if (!scanning) { // Stops scanning after a pre-defined scan period.
+                    handler.postDelayed({
+                        scanning = false
+
+                        bluetoothLeScanner.stopScan(leScanCallback)
+                    }, SCAN_PERIOD)
+                    scanning = true
+
+
+                    val settings = ScanSettings.Builder()
+                        .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
+                        .build()
+
+                    //     for (i in tempdevices.indices){
+                    filters.add(
+                        ScanFilter.Builder()
+                            .setServiceUuid(ParcelUuid(UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")))
+                            .build()
+                    )
+                    //  }
+
+
+                    // bluetoothLeScanner.startScan(leScanCallback)
+                    bluetoothLeScanner.startScan(filters, settings, leScanCallback)
+                } else {
+                    scanning = false
+                    bluetoothLeScanner.stopScan(leScanCallback)
+                }
+                Log.d("filters", "onCreate: " + filters)
+            }
+            binding.button1->{
+                if (!mBluetoothAdapter!!.isEnabled) {
+                    val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                    startActivityForResult(
+                        enableBtIntent,
+                        REQUEST_ENABLE_BT
+                    )
+                }
+            }
+            binding.button2->{
+                if (!mBluetoothAdapter!!.isDiscovering) {
+                    //                   out.append("MAKING YOUR DEVICE DISCOVERABLE");
+                    val context = applicationContext
+                    val text: CharSequence = "MAKING YOUR DEVICE DISCOVERABLE"
+                    val duration = Toast.LENGTH_SHORT
+                    val toast = Toast.makeText(context, text, duration)
+                    toast.show()
+
+                    if (ActivityCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        val devices: Set<BluetoothDevice> = mBluetoothAdapter.bondedDevices
+                        for (device in devices) {
+                            if (device.uuids[0] != null) {
+                                deviceuuid = device.uuids[0].toString()
+                            }
+                            Log.d(
+                                "deviceuuids",
+                                "onCreate: " + " Device: ${device.uuids[0]}       ${device.name}"
+                            )
+
+                        }
+
+
+                    }
+
+                    val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+                    startActivityForResult(
+                        enableBtIntent,
+                        REQUEST_DISCOVERABLE_BT
+                    )
+                }
+            }
+            binding.button3->{
+                mBluetoothAdapter!!.disable()
+                //            out.append("TURN_OFF BLUETOOTH");
+                val context = applicationContext
+                val text: CharSequence = "TURNING_OFF BLUETOOTH"
+                val duration = Toast.LENGTH_LONG
+                val toast = Toast.makeText(context, text, Toast.LENGTH_SHORT)
+                toast.show()
+            }
+
+        }
     }
 }

@@ -369,7 +369,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     characteristic!!.value.decodeToString()?.split("\\r?\\n".toRegex()).toString()
                 val array = characteristic!!.value.decodeToString()?.split("\\r?\\n".toRegex())
                 var string = ""
-
+              //  bluetoothResponse?.split("\\r?\\n".toRegex())[0]
                 val size = array?.size
 
                 // bluetoothResponse?.split("\\r?\\n".toRegex())

@@ -9,6 +9,7 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -35,6 +36,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
     var bletoothGatt: BluetoothGatt? = null
     var bluetoothResponse: String=""
     var bluetoothResponse2: String=""
+    var bluetoothResponse3 : String=""
 
    lateinit var leScanCallback: ScanCallback
 
@@ -74,6 +76,9 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
         }
         setContentView(view)
         val out = findViewById<View>(R.id.out) as TextView
+
+       
+
 
         printers = findViewById(R.id.printers)
 
@@ -367,6 +372,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                 bluetoothResponse2 = characteristic!!.value.decodeToString()
                 bluetoothResponse =
                     characteristic!!.value.decodeToString()?.split("\\r?\\n".toRegex()).toString()
+                bluetoothResponse3= characteristic!!.value.decodeToString()?.split("\r\n".toRegex()).toString()
                 val array = characteristic!!.value.decodeToString()?.split("\\r?\\n".toRegex())
                 var string = ""
               //  bluetoothResponse?.split("\\r?\\n".toRegex())[0]
@@ -397,6 +403,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     // bletoothGatt = wcharacteristic!!.value.decodeToString()
                     binding.bleResponse.setText(bluetoothResponse)
                     binding.bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
 
                     Log.d(
                         "valuereponse",
@@ -412,7 +419,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     //bluetoothResponse = wcharacteristic!!.value.decodeToString()
                     binding.bleResponse.setText(bluetoothResponse)
                     binding.bleResponse2.setText(bluetoothResponse2)
-
+                    binding.bleResponse3.setText(bluetoothResponse3)
                     Log.d(
                         "valuereponse",
                         "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
@@ -428,6 +435,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     //  bleResponse.setText(bluetoothResponse)
                     binding.bleResponse.setText(bluetoothResponse)
                     binding.bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
                     Log.d(
                         "valuereponse",
                         "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
@@ -443,6 +451,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
 
                     binding.bleResponse.setText(bluetoothResponse)
                     binding.bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
                     Log.d(
                         "valuereponse",
                         "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
@@ -457,6 +466,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     // bluetoothResponse = wcharacteristic!!.value.decodeToString()
                     binding. bleResponse.setText(bluetoothResponse)
                     binding.bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
                     Log.d(
                         "valuereponse",
                         "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
@@ -471,6 +481,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     //   bletoothGatt = wcharacteristic!!.value.decodeToString()
                     binding.bleResponse.setText(bluetoothResponse)
                     binding.bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
                     Log.d(
                         "valuereponse",
                         "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
@@ -485,6 +496,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     // bletoothGatt = wcharacteristic!!.value.decodeToString()
                     binding.bleResponse.setText(bluetoothResponse)
                     binding.bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
                     Log.d(
                         "valuereponse",
                         "writeCharacteristics: " + wcharacteristic!!.value.decodeToString()
@@ -499,6 +511,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     // bletoothGatt = wcharacteristic!!.value.decodeToString()
                     binding.bleResponse.setText(bluetoothResponse)
                     binding. bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
 
                     Log.d(
                         "valuereponse",
@@ -514,6 +527,7 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
                     // bletoothGatt = wcharacteristic!!.value.decodeToString()
                     binding.bleResponse.setText(bluetoothResponse)
                     binding. bleResponse2.setText(bluetoothResponse2)
+                    binding.bleResponse3.setText(bluetoothResponse3)
 
                     Log.d(
                         "valuereponse",
@@ -638,4 +652,6 @@ class BleDeviceConnectActivity : Activity() ,OnClickListener{
 
         }
     }
+
+
 }
